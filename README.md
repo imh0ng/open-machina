@@ -92,6 +92,53 @@ open-machina --help
 open-machina install
 ```
 
+### Judge Model Auth (OpenCode Auth Flow)
+
+`open-machina-plugin` reads judge credentials from OpenCode auth storage, not from a hardcoded key in plugin code.
+
+1. Log in with a dedicated judge provider id:
+
+```bash
+opencode auth login
+# choose "Other"
+# provider id: open-machina-judge
+# enter API key
+```
+
+2. Configure judge target model in your environment:
+
+```bash
+export MACHINA_JUDGE_PROVIDER=openai
+export MACHINA_JUDGE_MODEL=gpt-4o-mini
+```
+
+Optional overrides:
+
+- `MACHINA_JUDGE_AUTH_PROVIDER` (default: `open-machina-judge`)
+- `MACHINA_JUDGE_API_URL` (default inferred for `openai`, `openrouter`, `xai`)
+- `MACHINA_JUDGE_ALLOW_MODELS` (comma list: `provider/model`)
+- `MACHINA_JUDGE_DENY_MODELS` (comma list: `provider/model`)
+- `MACHINA_JUDGE_FALLBACK_MODELS` (comma list: `provider/model`, tried in order)
+
+Policy example:
+
+```bash
+export MACHINA_JUDGE_PROVIDER=openai
+export MACHINA_JUDGE_MODEL=gpt-4o-mini
+export MACHINA_JUDGE_DENY_MODELS=openai/gpt-4o-mini
+export MACHINA_JUDGE_FALLBACK_MODELS=openai/gpt-4.1-mini,openrouter/gpt-4.1-mini
+```
+
+With this policy, the primary model is blocked and Machina automatically falls back to the first valid candidate.
+
+If you already keep provider credentials under a provider id such as `openai`, set:
+
+```bash
+export MACHINA_JUDGE_AUTH_PROVIDER=openai
+```
+
+`open-machina-plugin` validates that `MACHINA_JUDGE_PROVIDER/MACHINA_JUDGE_MODEL` exists in OpenCode provider metadata when available.
+
 ### Verify Installation
 
 ```bash
@@ -283,6 +330,7 @@ For detailed release procedures, rollback strategies, and hotfix workflows, see 
 ### Getting Help
 
 - **Documentation**: See this README and [RELEASE.md](./RELEASE.md)
+- **Operations Runbook**: [OPERATIONS_RUNBOOK.md](./OPERATIONS_RUNBOOK.md)
 - **Issue Tracker**: [GitHub Issues](https://github.com/code-yeongyu/open-machina/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/code-yeongyu/open-machina/discussions)
 

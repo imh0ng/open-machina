@@ -778,3 +778,29 @@ test("workflow run long-running forced cancellation reports cleanup with no orph
   expect(payload.log.workflowName).toBe("long-running")
   expect(payload.log.status).toBe("cancelled")
 })
+
+test("backup plan returns daily snapshot retention plan", async () => {
+  const out = await runCli(["backup", "plan", "--now=2026-02-11T10:00:00.000Z"])
+  expect(out.code).toBe(0)
+
+  const payload = JSON.parse(out.stdout) as {
+    policy: { cadence: string; retention: number; perDay: number }
+    result: { retained: Array<{ id: string }>; removed: string[] }
+  }
+  expect(payload.policy.cadence).toBe("daily")
+  expect(payload.policy.retention).toBe(5)
+  expect(payload.result.retained.length).toBe(5)
+})
+
+test("autonomy decide reports unavailable judge without static decision fallback", async () => {
+  const out = await runCli([
+    "autonomy",
+    "decide",
+    '--input-json={"now":"2026-02-11T10:00:00.000Z","userMessage":"interrupt","userIntent":"urgent","persona":{"name":"machina","traits":["focused"],"goals":["help"],"fixedPrinciples":["prevent direct harm"]},"activeWork":[],"systemState":{}}',
+  ])
+
+  expect(out.code).toBe(2)
+  expect(out.stderr).toContain("AUTONOMY_JUDGE_UNAVAILABLE")
+  const payload = JSON.parse(out.stdout) as { error: string }
+  expect(payload.error).toContain("AUTONOMY_JUDGE_UNAVAILABLE")
+})

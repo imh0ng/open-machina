@@ -22,6 +22,10 @@ import {
   compactSessions,
   runMigrations,
   sleepWithSignal,
+  decideOrchestration,
+  detectBackupOs,
+  runSnapshotCycle,
+  DEFAULT_SNAPSHOT_POLICY,
 } from "open-machina-shared"
 import { getPluginStatus, info } from "open-machina-plugin"
 
@@ -161,6 +165,8 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv = process.en
         "  workflow list                              List available workflows",
         "  workflow run <workflow-name>               Run workflow by name",
         "  workflow cancel-smoke                      Run deterministic cancellation scenario",
+        "  autonomy decide --input-json=<json>         AI judge-based interrupt arbitration",
+        "  backup plan [--now=<iso>]                   Run snapshot retention planning cycle",
         "  tools list                                 List registered tools and permission classes",
         "  tools run <tool-id>                        Run a tool invocation",
         "                                             --approve=true|false --actor=<id> --operation-id=<id>",
@@ -1109,6 +1115,57 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv = process.en
     }
   }
 
+  if (args[0] === "autonomy" && args[1] === "decide") {
+    const input = parseConfigJson(getStringArg(args, "--input-json=")) as Parameters<typeof decideOrchestration>[0]
+    const result = await decideOrchestration(input, async () => {
+      throw new Error("AUTONOMY_JUDGE_UNAVAILABLE: configure a judge in plugin runtime to make AI decision")
+    }).catch((error) => ({
+      error: error instanceof Error ? error.message : String(error),
+    }))
+
+    return {
+      code: "error" in result ? 2 : 0,
+      stdout: JSON.stringify(result, null, 2),
+      stderr: "error" in result ? "AUTONOMY_JUDGE_UNAVAILABLE" : undefined,
+    }
+  }
+
+  if (args[0] === "backup" && args[1] === "plan") {
+    const nowArg = getStringArg(args, "--now=")
+    const now = nowArg ? new Date(nowArg) : new Date()
+    const snapshots = getStaticSnapshots(now)
+
+    const result = await runSnapshotCycle(
+      {
+        os: detectBackupOs(process.platform),
+        create: async () => ({
+          id: `snapshot-${now.toISOString()}`,
+          createdAt: now.toISOString(),
+          source: "policy-plan",
+        }),
+        list: async () => snapshots,
+        remove: async () => {
+          return
+        },
+      },
+      DEFAULT_SNAPSHOT_POLICY,
+      now,
+    )
+
+    return {
+      code: 0,
+      stdout: JSON.stringify(
+        {
+          os: detectBackupOs(process.platform),
+          policy: DEFAULT_SNAPSHOT_POLICY,
+          result,
+        },
+        null,
+        2,
+      ),
+    }
+  }
+
   if (args[0] === "tool" || args[0] === "tools") {
     const registry = createMachinaToolRegistry()
 
@@ -1485,6 +1542,14 @@ function detectShell(env: NodeJS.ProcessEnv): "bash" | "zsh" | "fish" | "powersh
     return "bash"
   }
   return "unknown"
+}
+
+function getStaticSnapshots(now: Date): Array<{ id: string; createdAt: string; source: string }> {
+  return [1, 2, 3, 4, 5].map((index) => ({
+    id: `seed-${index}`,
+    createdAt: new Date(now.getTime() - index * 24 * 60 * 60 * 1000).toISOString(),
+    source: "policy-plan",
+  }))
 }
 
 function nextToolOperationId(): string {
