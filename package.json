@@ -1,15 +1,21 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "opencode-machina",
-  "private": true,
+  "name": "open-machina",
+  "version": "0.0.1",
+  "private": false,
+  "description": "Open Machina CLI and OpenCode integration toolkit",
   "type": "module",
+  "bin": {
+    "open-machina": "./bin/open-machina"
+  },
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
     "install": "bun --version",
     "run": "bun script/run.ts",
-    "build": "bun --cwd=packages/machina-shared run build && bun --cwd=packages/machina-plugin run build && bun --cwd=packages/machina-cli run build",
+    "cli": "bun script/run.ts",
+    "build": "bun --cwd=packages/open-machina-shared run build && bun --cwd=packages/open-machina-plugin run build && bun --cwd=packages/open-machina-cli run build",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "bun test",
     "check:forbidden-terms": "bun script/check-forbidden-terms.ts",

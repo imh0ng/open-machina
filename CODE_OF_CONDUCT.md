@@ -39,7 +39,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at:
 
 * **Email**: conduct@machina.dev
-* **GitHub**: [Report via GitHub](https://github.com/code-yeongyu/opencode-machina/issues/new?template=code_of_conduct_report.md)
+* **GitHub**: [Report via GitHub](https://github.com/code-yeongyu/open-machina/issues/new?template=code_of_conduct_report.md)
 
 All complaints will be reviewed and investigated promptly and fairly.
 

@@ -198,7 +198,7 @@ export class ToolRegistry {
 export function createMachinaToolRegistry(): ToolRegistry {
   const registry = new ToolRegistry()
 
-  registry.register<{}, { ok: true; runtime: "machina" }>({
+  registry.register<{}, { ok: true; runtime: "open-machina" }>({
     id: "runtime.ping",
     category: "runtime",
     permissionClass: "safe",
@@ -208,7 +208,7 @@ export function createMachinaToolRegistry(): ToolRegistry {
       deterministic: true,
       capabilities: ["health", "runtime"],
     },
-    run: async () => ({ ok: true, runtime: "machina" }),
+    run: async () => ({ ok: true, runtime: "open-machina" }),
   })
 
   registry.register<{}, { tools: ToolMetadataRecord[]; summary: ToolMetadataSummary }>({

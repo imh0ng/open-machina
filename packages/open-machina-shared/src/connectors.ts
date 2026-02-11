@@ -355,7 +355,7 @@ function createTokenConnector(id: string, provider: string): ChannelConnector<To
 
       return {
         status: "skipped",
-        message: `${provider} live verification is not implemented yet in machina core.`,
+        message: `${provider} live verification is not implemented yet in open-machina core.`,
       }
     },
   }
@@ -522,7 +522,7 @@ export async function sendConnectorMessage(
   return {
     connectorId,
     status: "skipped",
-    message: `${connectorId} live dispatch is not implemented yet in machina core.`,
+    message: `${connectorId} live dispatch is not implemented yet in open-machina core.`,
   }
 }
 

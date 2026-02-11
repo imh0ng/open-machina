@@ -22,8 +22,8 @@ import {
   compactSessions,
   runMigrations,
   sleepWithSignal,
-} from "machina-shared"
-import { getPluginStatus, info } from "machina-plugin"
+} from "open-machina-shared"
+import { getPluginStatus, info } from "open-machina-plugin"
 
 const NEON_MINT = "\x1b[38;2;0;255;157m"
 const RESET = "\x1b[0m"
@@ -40,12 +40,12 @@ type CliResult = {
 }
 
 type StatusWorkflowResult = {
-  runtime: string
+  runtime: "open-machina"
   pluginStatus: "loaded" | "error"
 }
 
 type DoctorWorkflowResult = {
-  runtime: string
+  runtime: "open-machina"
   plugin: Awaited<ReturnType<typeof getPluginStatus>>
 }
 
@@ -118,10 +118,11 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv = process.en
     return {
       code: 0,
       stdout: [
-        "machina [--version] [status] [doctor [--json]] [storage migrate|integrity|compact] [workflow list|run|cancel-smoke]",
+        "open-machina [--version] [install] [status] [doctor [--json]] [storage migrate|integrity|compact] [workflow list|run|cancel-smoke]",
         "",
         "Commands:",
         "  --version                                  Print Machina identity marker and version",
+        "  install                                    Setup command + shell completion hints",
         "  status                                     Run status workflow",
         "  doctor [--json]                            Run doctor diagnostics workflow",
         "  onboard [--write-config=<path>]            Guided setup helper with optional config scaffold",
@@ -179,6 +180,33 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv = process.en
     return {
       code: 0,
       stdout: `${NEON_MINT}${ROBOT} ${metadata.marker} ${metadata.name} ${metadata.version}${RESET}`,
+    }
+  }
+
+  if (args[0] === "install") {
+    const shell = detectShell(env)
+    return {
+      code: 0,
+      stdout: JSON.stringify(
+        {
+          command: "open-machina install",
+          status: "ready",
+          shell,
+          usage: {
+            run: "open-machina --help",
+            npmGlobal: "npm install -g open-machina",
+            bunx: "bunx open-machina --help",
+          },
+          completion: {
+            bash: "open-machina completion bash",
+            zsh: "open-machina completion zsh",
+            fish: "open-machina completion fish",
+            powershell: "open-machina completion powershell",
+          },
+        },
+        null,
+        2,
+      ),
     }
   }
 
@@ -1275,7 +1303,7 @@ function createWorkflowEngine(): WorkflowEngine {
     run: async ({ payload }) => {
       const plugin = await getPluginStatus(payload.env)
       return {
-        runtime: "machina",
+        runtime: "open-machina",
         pluginStatus: plugin.status,
       }
     },
@@ -1286,7 +1314,7 @@ function createWorkflowEngine(): WorkflowEngine {
     run: async ({ payload }) => {
       const plugin = await getPluginStatus(payload.env)
       return {
-        runtime: "machina",
+        runtime: "open-machina",
         plugin,
       }
     },
@@ -1434,6 +1462,23 @@ function getBooleanArg(args: string[], prefix: string): boolean | undefined {
   }
 
   return undefined
+}
+
+function detectShell(env: NodeJS.ProcessEnv): "bash" | "zsh" | "fish" | "powershell" | "unknown" {
+  const raw = (env.SHELL ?? env.ComSpec ?? "").toLowerCase()
+  if (raw.includes("zsh")) {
+    return "zsh"
+  }
+  if (raw.includes("fish")) {
+    return "fish"
+  }
+  if (raw.includes("powershell") || raw.includes("pwsh") || raw.includes("cmd.exe")) {
+    return "powershell"
+  }
+  if (raw.includes("bash")) {
+    return "bash"
+  }
+  return "unknown"
 }
 
 function nextToolOperationId(): string {
@@ -1636,7 +1681,7 @@ async function runOnboardingHelper(writeConfigPath?: string): Promise<{
     "Configure storage location (MACHINA_STORAGE_DIR optional).",
     "Select channels to enable (discord/slack/telegram/signal/whatsapp-web/matrix).",
     "Provide channel credentials and run channel verify with --live when available.",
-    "Run machina doctor and machina workflow cancel-smoke before production usage.",
+    "Run open-machina doctor and open-machina workflow cancel-smoke before production usage.",
   ]
 
   const connectors = createDefaultChannelConnectors().map((connector) => connector.id)
@@ -1647,7 +1692,7 @@ async function runOnboardingHelper(writeConfigPath?: string): Promise<{
     const resolved = resolve(writeConfigPath)
     const payload = {
       profile: "default",
-      storageDir: ".machina/storage/default",
+      storageDir: ".open-machina/storage/default",
       channels: {
         matrix: { enabled: false, homeserverUrl: "", userId: "", roomId: "", accessToken: "" },
         discord: { enabled: false, guildId: "", channelId: "", botToken: "" },
@@ -1678,13 +1723,13 @@ const TASK3_PROFILES: ProfileSummary[] = [
   {
     id: "default",
     label: "Default local profile",
-    storageDir: ".machina/storage/default",
+    storageDir: ".open-machina/storage/default",
     pluginMode: "local",
   },
   {
     id: "ops",
     label: "Operations profile",
-    storageDir: ".machina/storage/ops",
+    storageDir: ".open-machina/storage/ops",
     pluginMode: "dev",
   },
 ]
@@ -1776,13 +1821,13 @@ const TASK3_WEBHOOKS: WebhookSummary[] = [
 
 const TASK3_DAEMONS: DaemonSummary[] = [
   {
-    name: "machina-agent",
+    name: "open-machina-agent",
     status: "running",
     pid: 4312,
     uptimeSeconds: 86400,
   },
   {
-    name: "machina-sync",
+    name: "open-machina-sync",
     status: "stopped",
     pid: null,
     uptimeSeconds: 0,
@@ -1791,22 +1836,22 @@ const TASK3_DAEMONS: DaemonSummary[] = [
 
 const TASK3_COMPLETIONS: Record<string, string> = {
   bash: [
-    "# machina bash completion",
-    "_machina_complete() {",
+    "# open-machina bash completion",
+    "_open_machina_complete() {",
     "  COMPREPLY=( $(compgen -W \"status doctor profile nodes logs pair sandbox update webhooks daemon completion\" -- \"${COMP_WORDS[COMP_CWORD]}\") )",
     "}",
-    "complete -F _machina_complete machina",
+    "complete -F _open_machina_complete open-machina",
   ].join("\n"),
   zsh: [
-    "#compdef machina",
+    "#compdef open-machina",
     "_arguments '1:command:(status doctor profile nodes logs pair sandbox update webhooks daemon completion)'",
   ].join("\n"),
   fish: [
-    "complete -c machina -f",
-    "complete -c machina -n '__fish_use_subcommand' -a 'status doctor profile nodes logs pair sandbox update webhooks daemon completion'",
+    "complete -c open-machina -f",
+    "complete -c open-machina -n '__fish_use_subcommand' -a 'status doctor profile nodes logs pair sandbox update webhooks daemon completion'",
   ].join("\n"),
   powershell: [
-    "Register-ArgumentCompleter -CommandName machina -ScriptBlock {",
+    "Register-ArgumentCompleter -CommandName open-machina -ScriptBlock {",
     "  param($commandName, $wordToComplete, $cursorPosition)",
     "  'status','doctor','profile','nodes','logs','pair','sandbox','update','webhooks','daemon','completion' | Where-Object { $_ -like \"$wordToComplete*\" }",
     "}",
@@ -1817,8 +1862,8 @@ const TASK3_TUI_KEYBINDINGS: Array<{ key: string; action: string; via: string }>
   { key: "j", action: "cursor.down", via: "opencode-tui" },
   { key: "k", action: "cursor.up", via: "opencode-tui" },
   { key: "enter", action: "panel.open", via: "opencode-tui" },
-  { key: "ctrl+r", action: "workflow.run", via: "machina cli bridge" },
-  { key: "ctrl+d", action: "daemon.status", via: "machina cli bridge" },
+  { key: "ctrl+r", action: "workflow.run", via: "open-machina cli bridge" },
+  { key: "ctrl+d", action: "daemon.status", via: "open-machina cli bridge" },
 ]
 
 const TASK3_DIAGNOSTIC_SIGNALS: DiagnosticSignal[] = [

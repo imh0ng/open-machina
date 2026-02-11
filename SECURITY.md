@@ -123,11 +123,11 @@ bun update <package-name>
 
 Past security advisories will be published on GitHub:
 
-- [GitHub Security Advisories](https://github.com/code-yeongyu/opencode-machina/security/advisories)
+- [GitHub Security Advisories](https://github.com/code-yeongyu/open-machina/security/advisories)
 
 Subscribe to security alerts to be notified of new advisories:
 
-1. Visit the [GitHub repository](https://github.com/code-yeongyu/opencode-machina)
+1. Visit the [GitHub repository](https://github.com/code-yeongyu/open-machina)
 2. Click "Watch" → "Custom" → Enable "Security alerts"
 
 ## Incident Response

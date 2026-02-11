@@ -21,32 +21,32 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "component": "opencode-machina",
-      "package-name": "opencode-machina",
+      "component": "open-machina",
+      "package-name": "open-machina",
       "changelog-path": "CHANGELOG.md"
     },
-    "packages/machina-cli": {
+    "packages/open-machina-cli": {
       "release-type": "node",
-      "component": "machina-cli",
-      "package-name": "machina-cli",
+      "component": "open-machina-cli",
+      "package-name": "open-machina-cli",
       "changelog-path": "CHANGELOG.md"
     },
-    "packages/machina-plugin": {
+    "packages/open-machina-plugin": {
       "release-type": "node",
-      "component": "machina-plugin",
-      "package-name": "machina-plugin",
+      "component": "open-machina-plugin",
+      "package-name": "open-machina-plugin",
       "changelog-path": "CHANGELOG.md"
     },
-    "packages/machina-shared": {
+    "packages/open-machina-shared": {
       "release-type": "node",
-      "component": "machina-shared",
-      "package-name": "machina-shared",
+      "component": "open-machina-shared",
+      "package-name": "open-machina-shared",
       "changelog-path": "CHANGELOG.md"
     },
-    "packages/machina-web": {
+    "packages/open-machina-web": {
       "release-type": "node",
-      "component": "machina-web",
-      "package-name": "@opencode-machina/machina-web",
+      "component": "open-machina-web",
+      "package-name": "@open-machina/web",
       "changelog-path": "CHANGELOG.md"
     }
   }

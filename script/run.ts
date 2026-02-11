@@ -1,6 +1,6 @@
 export {}
 
-import { runCli } from "machina-cli"
+import { runCli } from "open-machina-cli"
 
 const result = await runCli(Bun.argv.slice(2), process.env)
 

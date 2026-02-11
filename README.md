@@ -24,14 +24,31 @@ Machina combines the power of oh-my-opencode's multi-agent framework with a comp
 
 ```bash
 # Clone the repository
-git clone https://github.com/code-yeongyu/opencode-machina.git
-cd opencode-machina
+git clone https://github.com/code-yeongyu/open-machina.git
+cd open-machina
 
 # Install dependencies
 bun install
 
 # Build all packages
 bun run build
+
+# Use CLI locally
+bun run cli --help
+```
+
+### From npm (global)
+
+```bash
+npm install -g open-machina
+open-machina --help
+```
+
+### From bunx
+
+```bash
+bunx open-machina --help
+bunx open-machina install
 ```
 
 ### Integration with OpenCode
@@ -43,8 +60,8 @@ Machina is designed as an OpenCode plugin. After building:
 3. Start OpenCode with the plugin enabled
 
 ```bash
-# Run the Machina CLI
-bun run run
+# Run the Open Machina CLI
+open-machina --help
 ```
 
 ### Verify Installation
@@ -64,14 +81,14 @@ bun test
 
 ### CLI Commands
 
-Machina provides a unified CLI interface through `bun run run`:
+Open Machina provides a unified CLI interface through `open-machina`:
 
 ```bash
 # Main entry point
-bun run run
+open-machina
 
 # View help and available commands
-bun run run --help
+open-machina --help
 ```
 
 ### Build Scripts
@@ -89,9 +106,9 @@ bun run typecheck
 bun test
 
 # Individual package builds (if needed)
-bun --cwd=packages/machina-shared run build
-bun --cwd=packages/machina-plugin run build
-bun --cwd=packages/machina-cli run build
+bun --cwd=packages/open-machina-shared run build
+bun --cwd=packages/open-machina-plugin run build
+bun --cwd=packages/open-machina-cli run build
 ```
 
 ### Web Interface
@@ -110,11 +127,12 @@ Access the web UI by starting the OpenCode extension and navigating to the Machi
 ### Project Structure
 
 ```
-opencode-machina/
+open-machina/
 ├── packages/
-│   ├── machina-shared/    # Shared utilities and types
-│   ├── machina-plugin/    # OpenCode plugin integration
-│   └── machina-cli/       # Command-line interface
+│   ├── open-machina-shared/    # Shared utilities and types
+│   ├── open-machina-plugin/    # OpenCode plugin integration
+│   ├── open-machina-cli/       # Command-line interface
+│   └── open-machina-web/       # Local web UI host
 ├── config/                # Configuration files
 ├── script/                # Build and utility scripts
 ├── package.json           # Root package manifest
@@ -134,7 +152,7 @@ bun run dev
 bun run typecheck
 
 # Run specific test suites
-bun test packages/machina-shared
+bun test packages/open-machina-shared
 ```
 
 ## Versioning
@@ -237,8 +255,8 @@ For detailed release procedures, rollback strategies, and hotfix workflows, see 
 ### Getting Help
 
 - **Documentation**: See this README and [RELEASE.md](./RELEASE.md)
-- **Issue Tracker**: [GitHub Issues](https://github.com/code-yeongyu/opencode-machina/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/code-yeongyu/opencode-machina/discussions)
+- **Issue Tracker**: [GitHub Issues](https://github.com/code-yeongyu/open-machina/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/code-yeongyu/open-machina/discussions)
 
 ### Reporting Bugs
 
@@ -294,7 +312,7 @@ Upcoming features and improvements:
 - [ ] Expanded terminal capabilities
 - [ ] Plugin marketplace integration
 
-For the latest updates, follow the [GitHub Releases](https://github.com/code-yeongyu/opencode-machina/releases).
+For the latest updates, follow the [GitHub Releases](https://github.com/code-yeongyu/open-machina/releases).
 
 ---
 

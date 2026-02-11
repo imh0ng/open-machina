@@ -14,7 +14,7 @@ type WorkflowLog = {
 
 test("banner() includes identity markers", () => {
   const b = banner()
-  expect(b).toContain("machina")
+  expect(b).toContain("open-machina")
   expect(b).toContain("🤖")
   expect(b).toContain("\x1b[38;2;0;255;157m")
 })
@@ -23,9 +23,24 @@ test("runCli --version prints marker, version, and identity", async () => {
   const out = await runCli(["--version"])
 
   expect(out.code).toBe(0)
-  expect(out.stdout).toContain("[MACHINA] machina ")
+  expect(out.stdout).toContain("[OPEN-MACHINA] open-machina ")
   expect(out.stdout).toContain("🤖")
   expect(out.stdout).toContain("\x1b[38;2;0;255;157m")
+})
+
+test("runCli install prints npm and bunx usage", async () => {
+  const out = await runCli(["install"])
+  expect(out.code).toBe(0)
+
+  const payload = JSON.parse(out.stdout) as {
+    command: string
+    usage: { npmGlobal: string; bunx: string; run: string }
+  }
+
+  expect(payload.command).toBe("open-machina install")
+  expect(payload.usage.npmGlobal).toBe("npm install -g open-machina")
+  expect(payload.usage.bunx).toBe("bunx open-machina --help")
+  expect(payload.usage.run).toBe("open-machina --help")
 })
 
 test("runCli workflow list exposes at least five concrete workflows", async () => {
@@ -52,7 +67,7 @@ test("runCli status workflow includes structured operation log", async () => {
   }
 
   expect(payload.status).toBe("completed")
-  expect(payload.result.runtime).toBe("machina")
+  expect(payload.result.runtime).toBe("open-machina")
   expect(payload.log.workflowName).toBe("status")
   expect(payload.log.status).toBe("completed")
   expect(payload.log.operationId.startsWith("op-status-")).toBe(true)
@@ -71,7 +86,7 @@ test("runCli doctor --json reports loaded in local mode with log", async () => {
   }
 
   expect(payload.status).toBe("completed")
-  expect(payload.result.runtime).toBe("machina")
+  expect(payload.result.runtime).toBe("open-machina")
   expect(payload.result.plugin.status).toBe("loaded")
   expect(payload.log.workflowName).toBe("doctor")
 })
@@ -621,8 +636,8 @@ test("daemon status returns deterministic daemon health", async () => {
   const payload = JSON.parse(out.stdout) as {
     daemons: Array<{ name: string; status: string }>
   }
-  expect(payload.daemons.map((item) => item.name)).toContain("machina-agent")
-  expect(payload.daemons.find((item) => item.name === "machina-agent")?.status).toBe("running")
+  expect(payload.daemons.map((item) => item.name)).toContain("open-machina-agent")
+  expect(payload.daemons.find((item) => item.name === "open-machina-agent")?.status).toBe("running")
 })
 
 test("daemon status returns deterministic daemon not found error", async () => {
@@ -638,8 +653,8 @@ test("daemon status returns deterministic daemon not found error", async () => {
 test("completion bash returns deterministic completion script", async () => {
   const out = await runCli(["completion", "bash"])
   expect(out.code).toBe(0)
-  expect(out.stdout).toContain("# machina bash completion")
-  expect(out.stdout).toContain("complete -F _machina_complete machina")
+  expect(out.stdout).toContain("# open-machina bash completion")
+  expect(out.stdout).toContain("complete -F _open_machina_complete open-machina")
 })
 
 test("completion returns deterministic unsupported shell error", async () => {

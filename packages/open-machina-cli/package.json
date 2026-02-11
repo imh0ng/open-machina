@@ -1,13 +1,14 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "machina-plugin",
+  "name": "open-machina-cli",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "machina-shared": "workspace:*"
+    "open-machina-plugin": "workspace:*",
+    "open-machina-shared": "workspace:*"
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target bun --format esm",

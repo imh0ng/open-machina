@@ -1,5 +1,5 @@
 export function brand() {
-  return "machina"
+  return "open-machina"
 }
 
 export * from "./channel"

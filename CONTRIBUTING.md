@@ -29,14 +29,14 @@ This project adheres to a [Code of Conduct](./CODE_OF_CONDUCT.md). By participat
 
 ```bash
 # 1. Fork the repository
-# Click "Fork" on https://github.com/code-yeongyu/opencode-machina
+# Click "Fork" on https://github.com/code-yeongyu/open-machina
 
 # 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/opencode-machina.git
-cd opencode-machina
+git clone https://github.com/YOUR_USERNAME/open-machina.git
+cd open-machina
 
 # 3. Add upstream remote
-git remote add upstream https://github.com/code-yeongyu/opencode-machina.git
+git remote add upstream https://github.com/code-yeongyu/open-machina.git
 
 # 4. Install dependencies
 bun install
@@ -177,9 +177,10 @@ Follow the existing monorepo structure:
 
 ```
 packages/
-├── machina-shared/     # Shared utilities, types, helpers
-├── machina-plugin/     # OpenCode plugin integration
-└── machina-cli/        # CLI interface
+├── open-machina-shared/     # Shared utilities, types, helpers
+├── open-machina-plugin/     # OpenCode plugin integration
+├── open-machina-cli/        # CLI interface
+└── open-machina-web/        # Local web UI host
 ```
 
 ### Import Style
@@ -219,7 +220,7 @@ try {
 ### Test Structure
 
 ```typescript
-// packages/machina-shared/src/utils/logger.test.ts
+// packages/open-machina-shared/src/utils/logger.test.ts
 import { describe, it, expect } from 'bun:test';
 import { Logger } from './logger.js';
 
@@ -239,7 +240,7 @@ describe('Logger', () => {
 bun test
 
 # Run tests for a specific package
-bun test packages/machina-shared
+bun test packages/open-machina-shared
 
 # Run tests in watch mode (if configured)
 bun test --watch
@@ -348,8 +349,8 @@ For feature requests:
 ## Getting Help
 
 - **Documentation**: Read the [README](./README.md) and [RELEASE.md](./RELEASE.md)
-- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/code-yeongyu/opencode-machina/discussions)
-- **Issues**: Report bugs or request features in [GitHub Issues](https://github.com/code-yeongyu/opencode-machina/issues)
+- **Discussions**: Ask questions in [GitHub Discussions](https://github.com/code-yeongyu/open-machina/discussions)
+- **Issues**: Report bugs or request features in [GitHub Issues](https://github.com/code-yeongyu/open-machina/issues)
 - **Chat**: Join our community chat (link TBD)
 
 ## Recognition

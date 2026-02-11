@@ -116,7 +116,7 @@ test("safe tool runs without privileged approval", async () => {
     permissionState: { privilegedApproved: false },
   })
 
-  expect(result.output).toEqual({ ok: true, runtime: "machina" })
+  expect(result.output).toEqual({ ok: true, runtime: "open-machina" })
 })
 
 test("tool list metadata includes lsp capability", async () => {

@@ -117,35 +117,35 @@ OpenCode Machina has completed all required pre-release governance tasks. The re
 
 | File | Purpose | Location |
 |------|---------|----------|
-| `README.md` | Primary user documentation | `opencode-machina/README.md` |
-| `RELEASE.md` | Release procedures and policy | `opencode-machina/RELEASE.md` |
-| `SECURITY.md` | Security disclosure policy | `opencode-machina/SECURITY.md` |
-| `CONTRIBUTING.md` | Contribution guidelines | `opencode-machina/CONTRIBUTING.md` |
-| `CODE_OF_CONDUCT.md` | Community standards | `opencode-machina/CODE_OF_CONDUCT.md` |
-| `LICENSE` | MIT License | `opencode-machina/LICENSE` |
+| `README.md` | Primary user documentation | `open-machina/README.md` |
+| `RELEASE.md` | Release procedures and policy | `open-machina/RELEASE.md` |
+| `SECURITY.md` | Security disclosure policy | `open-machina/SECURITY.md` |
+| `CONTRIBUTING.md` | Contribution guidelines | `open-machina/CONTRIBUTING.md` |
+| `CODE_OF_CONDUCT.md` | Community standards | `open-machina/CODE_OF_CONDUCT.md` |
+| `LICENSE` | MIT License | `open-machina/LICENSE` |
 
 ### Workflow Artifacts
 
 | File | Purpose | Location |
 |------|---------|----------|
-| `ci.yml` | CI workflow gates (typecheck, test, build) | `opencode-machina/.github/workflows/ci.yml` |
-| `release.yml` | Release workflow (tag-driven) | `opencode-machina/.github/workflows/release.yml` |
+| `ci.yml` | CI workflow gates (typecheck, test, build) | `open-machina/.github/workflows/ci.yml` |
+| `release.yml` | Release workflow (tag-driven) | `open-machina/.github/workflows/release.yml` |
 
 ### Release Automation Artifacts
 
 | File | Purpose | Location |
 |------|---------|----------|
-| `release-please-config.json` | Release automation configuration | `opencode-machina/release-please-config.json` |
-| `.release-please-manifest.json` | Monorepo version manifest | `opencode-machina/.release-please-manifest.json` |
+| `release-please-config.json` | Release automation configuration | `open-machina/release-please-config.json` |
+| `.release-please-manifest.json` | Monorepo version manifest | `open-machina/.release-please-manifest.json` |
 
 ### Template Artifacts
 
 | File | Purpose | Location |
 |------|---------|----------|
-| `bug_report.md` | Bug issue template | `opencode-machina/.github/ISSUE_TEMPLATE/bug_report.md` |
-| `feature_request.md` | Feature issue template | `opencode-machina/.github/ISSUE_TEMPLATE/feature_request.md` |
-| `PULL_REQUEST_TEMPLATE.md` | PR governance template | `opencode-machina/.github/PULL_REQUEST_TEMPLATE.md` |
-| `CODEOWNERS` | Code ownership rules (placeholder) | `opencode-machina/.github/CODEOWNERS` |
+| `bug_report.md` | Bug issue template | `open-machina/.github/ISSUE_TEMPLATE/bug_report.md` |
+| `feature_request.md` | Feature issue template | `open-machina/.github/ISSUE_TEMPLATE/feature_request.md` |
+| `PULL_REQUEST_TEMPLATE.md` | PR governance template | `open-machina/.github/PULL_REQUEST_TEMPLATE.md` |
+| `CODEOWNERS` | Code ownership rules (placeholder) | `open-machina/.github/CODEOWNERS` |
 
 ### Evidence Logs
 
@@ -284,15 +284,15 @@ Ran 29 tests across 7 files.
 ### Build Output
 ```
 $ bun run build
-$ bun --cwd=packages/machina-shared run build
+$ bun --cwd=packages/open-machina-shared run build
 Bundled 6 modules in 29ms
 index.js  29.31 KB  (entry point)
 
-$ bun --cwd=packages/machina-plugin run build
+$ bun --cwd=packages/open-machina-plugin run build
 Bundled 1 module in 3ms
 index.js  2.80 KB  (entry point)
 
-$ bun --cwd=packages/machina-cli run build
+$ bun --cwd=packages/open-machina-cli run build
 Bundled 8 modules in 4ms
 index.js  47.0 KB  (entry point)
 ```

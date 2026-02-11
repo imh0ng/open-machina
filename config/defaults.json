@@ -1,24 +1,24 @@
 {
   "identity": {
-    "name": "machina",
-    "marker": "[MACHINA]"
+    "name": "open-machina",
+    "marker": "[OPEN-MACHINA]"
   },
   "version": "0.0.0-dev",
   "plugin": {
-    "name": "machina-plugin",
+    "name": "open-machina-plugin",
     "mode": "local",
     "modes": {
       "local": {
         "source": "workspace",
-        "entry": "packages/machina-plugin/src/index.ts"
+        "entry": "packages/open-machina-plugin/src/index.ts"
       },
       "dev": {
         "source": "workspace-dist",
-        "entry": "packages/machina-plugin/dist/index.js"
+        "entry": "packages/open-machina-plugin/dist/index.js"
       },
       "prod": {
         "source": "package",
-        "entry": "machina-plugin"
+        "entry": "open-machina-plugin"
       }
     }
   }

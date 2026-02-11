@@ -1,10 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "machina-shared",
+  "name": "open-machina-plugin",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "open-machina-shared": "workspace:*"
   },
   "scripts": {
     "build": "bun build src/index.ts --outdir dist --target bun --format esm",

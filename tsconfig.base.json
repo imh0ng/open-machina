@@ -12,9 +12,9 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "machina-shared": ["packages/machina-shared/src/index.ts"],
-      "machina-plugin": ["packages/machina-plugin/src/index.ts"],
-      "machina-cli": ["packages/machina-cli/src/index.ts"]
+      "open-machina-shared": ["packages/open-machina-shared/src/index.ts"],
+      "open-machina-plugin": ["packages/open-machina-plugin/src/index.ts"],
+      "open-machina-cli": ["packages/open-machina-cli/src/index.ts"]
     }
   }
 }

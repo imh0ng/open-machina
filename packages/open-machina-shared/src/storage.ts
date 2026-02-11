@@ -99,7 +99,7 @@ export function resolveStoragePolicy(explicitDir?: string, env: NodeJS.ProcessEn
 
   return {
     source: "default",
-    rootDir: join(home, ".machina", "storage"),
+    rootDir: join(home, ".open-machina", "storage"),
   }
 }
 

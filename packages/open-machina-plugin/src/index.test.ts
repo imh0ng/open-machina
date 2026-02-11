@@ -8,8 +8,8 @@ test("defaultsUrl points at workspace defaults.json", async () => {
 
 test("info() returns stable shape", async () => {
   const out = await info()
-  expect(out.name).toBe("machina")
-  expect(out.marker).toBe("[MACHINA]")
+  expect(out.name).toBe("open-machina")
+  expect(out.marker).toBe("[OPEN-MACHINA]")
   expect(out.version.length > 0).toBe(true)
   expect(out.defaultsUrl.includes("defaults.json")).toBe(true)
 })
@@ -17,15 +17,15 @@ test("info() returns stable shape", async () => {
 test("resolvePluginRegistration supports local/dev/prod", async () => {
   const local = await resolvePluginRegistration({ MACHINA_PLUGIN_MODE: "local" })
   expect(local.mode).toBe("local")
-  expect(local.resolvedEntry?.endsWith("/packages/machina-plugin/src/index.ts")).toBe(true)
+  expect(local.resolvedEntry?.endsWith("/packages/open-machina-plugin/src/index.ts")).toBe(true)
 
   const dev = await resolvePluginRegistration({ MACHINA_PLUGIN_MODE: "dev" })
   expect(dev.mode).toBe("dev")
-  expect(dev.resolvedEntry?.endsWith("/packages/machina-plugin/dist/index.js")).toBe(true)
+  expect(dev.resolvedEntry?.endsWith("/packages/open-machina-plugin/dist/index.js")).toBe(true)
 
   const prod = await resolvePluginRegistration({ MACHINA_PLUGIN_MODE: "prod" })
   expect(prod.mode).toBe("prod")
-  expect(prod.resolvedEntry).toBe("machina-plugin")
+  expect(prod.resolvedEntry).toBe("open-machina-plugin")
 })
 
 test("getPluginStatus returns actionable invalid mode error", async () => {

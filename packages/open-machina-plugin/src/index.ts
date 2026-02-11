@@ -95,7 +95,7 @@ export async function getPluginStatus(env: NodeJS.ProcessEnv = process.env): Pro
       status: "error",
       code: "CONFIG_NOT_FOUND",
       message: `Machina defaults config not found at ${defaultsUrl.pathname}`,
-      hint: "Ensure opencode-machina/config/defaults.json exists and is readable.",
+      hint: "Ensure open-machina/config/defaults.json exists and is readable.",
     }
   }
 
@@ -122,7 +122,7 @@ export async function getPluginStatus(env: NodeJS.ProcessEnv = process.env): Pro
         status: "error",
         code: "PLUGIN_NOT_FOUND",
         message: `Plugin entry not found for mode ${registration.mode}: ${target}`,
-        hint: "Run `bun --cwd=/Users/hong/machina-project/opencode-machina run build` or set MACHINA_PLUGIN_PATH to a valid entry file.",
+        hint: "Run `bun --cwd=/Users/hong/machina-project/open-machina run build` or set MACHINA_PLUGIN_PATH to a valid entry file.",
         registration,
       }
     }

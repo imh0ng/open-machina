@@ -1,7 +1,7 @@
 {
   ".": "0.0.1",
-  "packages/machina-cli": "0.0.1",
-  "packages/machina-plugin": "0.0.1",
-  "packages/machina-shared": "0.0.1",
-  "packages/machina-web": "0.0.1"
+  "packages/open-machina-cli": "0.0.1",
+  "packages/open-machina-plugin": "0.0.1",
+  "packages/open-machina-shared": "0.0.1",
+  "packages/open-machina-web": "0.0.1"
 }
