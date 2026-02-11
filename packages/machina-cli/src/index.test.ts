@@ -94,6 +94,44 @@ test("runCli doctor --json fails with deterministic error on invalid config", as
   expect(payload.log.operationId.startsWith("op-doctor-")).toBe(true)
 })
 
+test("onboard writes deterministic config scaffold when requested", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "machina-onboard-"))
+  const configPath = join(temp, "config", "machina.json")
+
+  try {
+    const out = await runCli(["onboard", `--write-config=${configPath}`])
+    expect(out.code).toBe(0)
+
+    const payload = JSON.parse(out.stdout) as {
+      mode: string
+      wroteConfig: boolean
+      configPath: string | null
+      connectors: string[]
+    }
+    expect(payload.mode).toBe("guided")
+    expect(payload.wroteConfig).toBe(true)
+    expect(payload.configPath).toBe(configPath)
+    expect(payload.connectors).toContain("discord")
+    expect(payload.connectors).toContain("telegram")
+
+    const saved = JSON.parse(await readFile(configPath, "utf8")) as {
+      channels: Record<string, { enabled: boolean }>
+    }
+    expect(saved.channels.discord?.enabled).toBe(false)
+    expect(saved.channels.matrix?.enabled).toBe(false)
+  } finally {
+    await rm(temp, { recursive: true, force: true })
+  }
+})
+
+test("setup aliases onboard helper", async () => {
+  const out = await runCli(["setup"])
+  expect(out.code).toBe(0)
+  const payload = JSON.parse(out.stdout) as { mode: string; steps: string[] }
+  expect(payload.mode).toBe("guided")
+  expect(payload.steps.length).toBeGreaterThanOrEqual(5)
+})
+
 test("five core workflows run end-to-end through CLI with operation logs", async () => {
   const storageDir = await mkdtemp(join(tmpdir(), "machina-cli-workflow-"))
 
@@ -223,6 +261,188 @@ test("channel connect invalid credentials returns deterministic non-secret error
   } finally {
     await rm(storageDir, { recursive: true, force: true })
   }
+})
+
+test("channel verify validates connector config in non-live mode", async () => {
+  const out = await runCli([
+    "channel",
+    "verify",
+    "telegram",
+    '--config-json={"accountId":"ops-bot","endpoint":"telegram://ops","accessToken":"telegram-token-12345"}',
+  ])
+
+  expect(out.code).toBe(0)
+  const payload = JSON.parse(out.stdout) as {
+    connectorId: string
+    status: string
+    message: string
+  }
+
+  expect(payload.connectorId).toBe("telegram")
+  expect(payload.status).toBe("skipped")
+  expect(payload.message).toContain("Live verification disabled")
+})
+
+test("channel verify rejects invalid connector payload deterministically", async () => {
+  const out = await runCli([
+    "channel",
+    "verify",
+    "slack",
+    '--config-json={"accountId":"ops-bot","endpoint":"","accessToken":"slack-token-12345"}',
+  ])
+
+  expect(out.code).toBe(2)
+  const payload = JSON.parse(out.stdout) as { code: string; message: string }
+  expect(payload.code).toBe("CONFIG_VALIDATION_ERROR")
+  expect(payload.message).toContain("slack config validation failed")
+})
+
+test("channel send returns skipped when live dispatch is disabled", async () => {
+  const out = await runCli([
+    "channel",
+    "send",
+    "telegram",
+    '--config-json={"accountId":"ops-bot","endpoint":"telegram://ops","accessToken":"telegram-token-12345"}',
+    "--text=hello from machina",
+  ])
+
+  expect(out.code).toBe(0)
+  const payload = JSON.parse(out.stdout) as { connectorId: string; status: string; message: string }
+  expect(payload.connectorId).toBe("telegram")
+  expect(payload.status).toBe("skipped")
+  expect(payload.message).toContain("Live dispatch disabled")
+})
+
+test("channel send requires --text argument", async () => {
+  const out = await runCli([
+    "channel",
+    "send",
+    "telegram",
+    '--config-json={"accountId":"ops-bot","endpoint":"telegram://ops","accessToken":"telegram-token-12345"}',
+  ])
+
+  expect(out.code).toBe(1)
+  expect(out.stderr ?? "").toContain("Missing required arg --text")
+})
+
+test("channel accounts set/list/show/remove lifecycle is deterministic", async () => {
+  const storageDir = await mkdtemp(join(tmpdir(), "machina-cli-channel-accounts-"))
+
+  try {
+    const setOut = await runCli([
+      "channel",
+      "accounts",
+      "set",
+      "ops-slack",
+      "slack",
+      `--storage-dir=${storageDir}`,
+      '--config-json={"accountId":"ops-bot","endpoint":"slack://C12345","accessToken":"slack-token-12345"}',
+    ])
+    expect(setOut.code).toBe(0)
+
+    const listOut = await runCli(["channel", "accounts", "list", `--storage-dir=${storageDir}`])
+    expect(listOut.code).toBe(0)
+    const listPayload = JSON.parse(listOut.stdout) as { accounts: Array<{ accountId: string }> }
+    expect(listPayload.accounts.map((item) => item.accountId)).toContain("ops-slack")
+
+    const showOut = await runCli(["channel", "accounts", "show", "ops-slack", `--storage-dir=${storageDir}`])
+    expect(showOut.code).toBe(0)
+    const showPayload = JSON.parse(showOut.stdout) as { accountId: string; connectorId: string }
+    expect(showPayload.accountId).toBe("ops-slack")
+    expect(showPayload.connectorId).toBe("slack")
+
+    const removeOut = await runCli(["channel", "accounts", "remove", "ops-slack", `--storage-dir=${storageDir}`])
+    expect(removeOut.code).toBe(0)
+    const removePayload = JSON.parse(removeOut.stdout) as { removed: boolean }
+    expect(removePayload.removed).toBe(true)
+  } finally {
+    await rm(storageDir, { recursive: true, force: true })
+  }
+})
+
+test("channel connect-account uses saved account profile", async () => {
+  const storageDir = await mkdtemp(join(tmpdir(), "machina-cli-connect-account-"))
+
+  try {
+    await runCli([
+      "channel",
+      "accounts",
+      "set",
+      "ops-telegram",
+      "telegram",
+      `--storage-dir=${storageDir}`,
+      '--config-json={"accountId":"ops","endpoint":"telegram://123456","accessToken":"telegram-token-12345"}',
+    ])
+
+    const out = await runCli([
+      "channel",
+      "connect-account",
+      "alerts-room",
+      "ops-telegram",
+      `--storage-dir=${storageDir}`,
+    ])
+
+    expect(out.code).toBe(0)
+    const payload = JSON.parse(out.stdout) as { status: string; connectorId: string }
+    expect(payload.status).toBe("connected")
+    expect(payload.connectorId).toBe("telegram")
+  } finally {
+    await rm(storageDir, { recursive: true, force: true })
+  }
+})
+
+test("channel inbound discord returns skipped when live flag disabled", async () => {
+  const out = await runCli([
+    "channel",
+    "inbound",
+    "discord",
+    '--config-json={"guildId":"guild-1","channelId":"alerts","botToken":"discord-token-12345"}',
+  ])
+
+  expect(out.code).toBe(0)
+  const payload = JSON.parse(out.stdout) as { status: string; events: unknown[] }
+  expect(payload.status).toBe("skipped")
+  expect(payload.events.length).toBe(0)
+})
+
+test("channel inbound usage rejects unsupported provider", async () => {
+  const out = await runCli([
+    "channel",
+    "inbound",
+    "matrix",
+    '--config-json={"accountId":"ops","endpoint":"telegram://123","accessToken":"telegram-token-12345"}',
+  ])
+
+  expect(out.code).toBe(1)
+  expect(out.stderr ?? "").toContain("Usage: channel inbound <discord|telegram|slack>")
+})
+
+test("channel inbound telegram returns skipped when live flag disabled", async () => {
+  const out = await runCli([
+    "channel",
+    "inbound",
+    "telegram",
+    '--config-json={"accountId":"ops","endpoint":"telegram://123","accessToken":"telegram-token-12345"}',
+  ])
+
+  expect(out.code).toBe(0)
+  const payload = JSON.parse(out.stdout) as { status: string; events: unknown[] }
+  expect(payload.status).toBe("skipped")
+  expect(payload.events.length).toBe(0)
+})
+
+test("channel inbound slack returns skipped when live flag disabled", async () => {
+  const out = await runCli([
+    "channel",
+    "inbound",
+    "slack",
+    '--config-json={"accountId":"ops","endpoint":"slack://COPS","accessToken":"slack-token-12345"}',
+  ])
+
+  expect(out.code).toBe(0)
+  const payload = JSON.parse(out.stdout) as { status: string; events: unknown[] }
+  expect(payload.status).toBe("skipped")
+  expect(payload.events.length).toBe(0)
 })
 
 test("profile list returns deterministic profiles and active profile", async () => {

@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process"
 import { once } from "node:events"
+import { mkdir, writeFile } from "node:fs/promises"
+import { dirname, resolve } from "node:path"
 import {
   ToolPolicyError,
   ToolRuntimeError,
@@ -8,6 +10,11 @@ import {
   WorkflowEngine,
   createMachinaToolRegistry,
   createDefaultChannelConnectors,
+  pullDiscordInboundEvents,
+  pullSlackInboundEvents,
+  pullTelegramInboundEvents,
+  sendConnectorMessage,
+  verifyConnectorConfig,
   parseConfigJson,
   type WorkflowRunResult,
   brand,
@@ -117,6 +124,7 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv = process.en
         "  --version                                  Print Machina identity marker and version",
         "  status                                     Run status workflow",
         "  doctor [--json]                            Run doctor diagnostics workflow",
+        "  onboard [--write-config=<path>]            Guided setup helper with optional config scaffold",
         "  profile list                               List available CLI profiles",
         "  profile use <profile-id>                   Resolve and validate selected profile",
         "  nodes status [--node=<id>]                 Show device/node runtime health",
@@ -134,6 +142,19 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv = process.en
         "  channel connectors                         List available channel connectors",
         "  channel connect <channel-id> <connector-id> --config-json=<json>",
         "                                             Connect channel using connector and config payload",
+        "  channel connect-account <channel-id> <account-id>",
+        "                                             Connect channel using saved account profile",
+        "  channel verify <connector-id> --config-json=<json> [--live=true|false]",
+        "                                             Validate connector config and optionally run live provider probe",
+        "  channel send <connector-id> --config-json=<json> --text=<message> [--target=<id>] [--live=true|false]",
+        "                                             Send outbound channel message (live mode required)",
+        "  channel inbound <discord|telegram|slack> --config-json=<json> [--live=true|false] [--limit=<n>] [--channel=<id>] [--offset=<n>]",
+        "                                             Pull inbound messages for provider",
+        "  channel accounts list [--connector=<id>]    List saved channel account profiles",
+        "  channel accounts show <account-id>          Show saved account profile",
+        "  channel accounts set <account-id> <connector-id> --config-json=<json>",
+        "                                             Upsert saved account profile",
+        "  channel accounts remove <account-id>        Remove saved account profile",
         "  channel status <channel-id>                Show current channel connection status",
         "  channel disconnect <channel-id>            Disconnect channel",
         "  workflow list                              List available workflows",
@@ -174,6 +195,15 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv = process.en
     })
 
     return toCliResult(execution)
+  }
+
+  if (args[0] === "onboard" || args[0] === "setup") {
+    const writeConfigPath = getStringArg(args, "--write-config=")
+    const result = await runOnboardingHelper(writeConfigPath)
+    return {
+      code: 0,
+      stdout: JSON.stringify(result, null, 2),
+    }
   }
 
   if (args[0] === "profile") {
@@ -598,6 +628,302 @@ export async function runCli(argv: string[], env: NodeJS.ProcessEnv = process.en
         return {
           code: 0,
           stdout: JSON.stringify(status, null, 2),
+        }
+      } catch (error) {
+        const normalized = normalizeChannelError(error)
+        return {
+          code: 2,
+          stdout: JSON.stringify(
+            {
+              code: normalized.code,
+              message: normalized.message,
+            },
+            null,
+            2,
+          ),
+          stderr: `${normalized.code}: ${normalized.message}`,
+        }
+      }
+    }
+
+    if (args[1] === "connect-account") {
+      const channelId = args[2]
+      const accountId = args[3]
+      if (!channelId || !accountId) {
+        return {
+          code: 1,
+          stdout: "",
+          stderr: "Missing required args. Usage: channel connect-account <channel-id> <account-id>",
+        }
+      }
+
+      try {
+        const status = await registry.connectAccount({ channelId, accountId })
+        return {
+          code: 0,
+          stdout: JSON.stringify(status, null, 2),
+        }
+      } catch (error) {
+        const normalized = normalizeChannelError(error)
+        return {
+          code: 2,
+          stdout: JSON.stringify(
+            {
+              code: normalized.code,
+              message: normalized.message,
+            },
+            null,
+            2,
+          ),
+          stderr: `${normalized.code}: ${normalized.message}`,
+        }
+      }
+    }
+
+    if (args[1] === "accounts") {
+      if (args[2] === "list") {
+        const connectorId = getStringArg(args, "--connector=")
+        const accounts = await registry.listAccounts(connectorId)
+        return {
+          code: 0,
+          stdout: JSON.stringify({ accounts }, null, 2),
+        }
+      }
+
+      if (args[2] === "show") {
+        const accountId = args[3]
+        if (!accountId) {
+          return {
+            code: 1,
+            stdout: "",
+            stderr: "Missing required arg. Usage: channel accounts show <account-id>",
+          }
+        }
+
+        const account = await registry.getAccount(accountId)
+        if (!account) {
+          const message = `Account not found: ${accountId}`
+          return {
+            code: 2,
+            stdout: JSON.stringify({ code: "ACCOUNT_NOT_FOUND", message, accountId }, null, 2),
+            stderr: `ACCOUNT_NOT_FOUND: ${message}`,
+          }
+        }
+
+        return {
+          code: 0,
+          stdout: JSON.stringify(account, null, 2),
+        }
+      }
+
+      if (args[2] === "set") {
+        const accountId = args[3]
+        const connectorId = args[4]
+        if (!accountId || !connectorId) {
+          return {
+            code: 1,
+            stdout: "",
+            stderr:
+              "Missing required args. Usage: channel accounts set <account-id> <connector-id> --config-json=<json>",
+          }
+        }
+
+        try {
+          const account = await registry.saveAccount({
+            accountId,
+            connectorId,
+            config: parseConfigJson(getStringArg(args, "--config-json=")),
+          })
+
+          return {
+            code: 0,
+            stdout: JSON.stringify(account, null, 2),
+          }
+        } catch (error) {
+          const normalized = normalizeChannelError(error)
+          return {
+            code: 2,
+            stdout: JSON.stringify(
+              {
+                code: normalized.code,
+                message: normalized.message,
+              },
+              null,
+              2,
+            ),
+            stderr: `${normalized.code}: ${normalized.message}`,
+          }
+        }
+      }
+
+      if (args[2] === "remove") {
+        const accountId = args[3]
+        if (!accountId) {
+          return {
+            code: 1,
+            stdout: "",
+            stderr: "Missing required arg. Usage: channel accounts remove <account-id>",
+          }
+        }
+
+        const removed = await registry.removeAccount(accountId)
+        return {
+          code: removed ? 0 : 2,
+          stdout: JSON.stringify(
+            removed
+              ? {
+                  accountId,
+                  removed: true,
+                }
+              : {
+                  code: "ACCOUNT_NOT_FOUND",
+                  message: `Account not found: ${accountId}`,
+                  accountId,
+                },
+            null,
+            2,
+          ),
+          stderr: removed ? undefined : `ACCOUNT_NOT_FOUND: Account not found: ${accountId}`,
+        }
+      }
+
+      return {
+        code: 1,
+        stdout: "",
+        stderr:
+          "Unknown channel accounts subcommand. Usage: channel accounts list|show <account-id>|set <account-id> <connector-id> --config-json=<json>|remove <account-id>",
+      }
+    }
+
+    if (args[1] === "verify") {
+      const connectorId = args[2]
+      if (!connectorId) {
+        return {
+          code: 1,
+          stdout: "",
+          stderr: "Missing required arg. Usage: channel verify <connector-id> --config-json=<json> [--live=true|false]",
+        }
+      }
+
+      try {
+        const verification = await verifyConnectorConfig(
+          connectorId,
+          parseConfigJson(getStringArg(args, "--config-json=")),
+          {
+            live: getBooleanArg(args, "--live=") ?? false,
+          },
+        )
+
+        return {
+          code: 0,
+          stdout: JSON.stringify(verification, null, 2),
+        }
+      } catch (error) {
+        const normalized = normalizeChannelError(error)
+        return {
+          code: 2,
+          stdout: JSON.stringify(
+            {
+              code: normalized.code,
+              message: normalized.message,
+            },
+            null,
+            2,
+          ),
+          stderr: `${normalized.code}: ${normalized.message}`,
+        }
+      }
+    }
+
+    if (args[1] === "send") {
+      const connectorId = args[2]
+      if (!connectorId) {
+        return {
+          code: 1,
+          stdout: "",
+          stderr:
+            "Missing required arg. Usage: channel send <connector-id> --config-json=<json> --text=<message> [--target=<id>] [--live=true|false]",
+        }
+      }
+
+      const text = getStringArg(args, "--text=")
+      if (!text) {
+        return {
+          code: 1,
+          stdout: "",
+          stderr:
+            "Missing required arg --text. Usage: channel send <connector-id> --config-json=<json> --text=<message> [--target=<id>] [--live=true|false]",
+        }
+      }
+
+      try {
+        const result = await sendConnectorMessage(
+          connectorId,
+          parseConfigJson(getStringArg(args, "--config-json=")),
+          {
+            text,
+            target: getStringArg(args, "--target="),
+          },
+          {
+            live: getBooleanArg(args, "--live=") ?? false,
+          },
+        )
+
+        return {
+          code: 0,
+          stdout: JSON.stringify(result, null, 2),
+        }
+      } catch (error) {
+        const normalized = normalizeChannelError(error)
+        return {
+          code: 2,
+          stdout: JSON.stringify(
+            {
+              code: normalized.code,
+              message: normalized.message,
+            },
+            null,
+            2,
+          ),
+          stderr: `${normalized.code}: ${normalized.message}`,
+        }
+      }
+    }
+
+    if (args[1] === "inbound") {
+      const provider = args[2]
+      if (provider !== "discord" && provider !== "telegram" && provider !== "slack") {
+        return {
+          code: 1,
+          stdout: "",
+          stderr:
+            "Usage: channel inbound <discord|telegram|slack> --config-json=<json> [--live=true|false] [--limit=<n>] [--channel=<id>] [--offset=<n>]",
+        }
+      }
+
+      try {
+        const parsedConfig = parseConfigJson(getStringArg(args, "--config-json="))
+        const live = getBooleanArg(args, "--live=") ?? false
+        const limit = getNumberArg(args, "--limit=")
+
+        const result =
+          provider === "discord"
+            ? await pullDiscordInboundEvents(parsedConfig, { live, limit })
+            : provider === "telegram"
+              ? await pullTelegramInboundEvents(parsedConfig, {
+                  live,
+                  limit,
+                  offset: getNumberArg(args, "--offset="),
+                })
+              : await pullSlackInboundEvents(parsedConfig, {
+                  live,
+                  limit,
+                  channel: getStringArg(args, "--channel="),
+                })
+
+        return {
+          code: 0,
+          stdout: JSON.stringify(result, null, 2),
         }
       } catch (error) {
         const normalized = normalizeChannelError(error)
@@ -1277,6 +1603,8 @@ function getTask3UsageError(args: string[]): string | undefined {
   }
 
   const usageByCommand: Record<string, string> = {
+    onboard: "Unknown onboard option. Usage: onboard [--write-config=<path>]",
+    setup: "Unknown setup option. Usage: setup [--write-config=<path>]",
     profile: "Unknown profile subcommand. Usage: profile list | profile use <profile-id>",
     nodes: "Unknown nodes subcommand. Usage: nodes status [--node=<id>]",
     logs: "Unknown logs subcommand. Usage: logs tail [--lines=<n>] [--stream=<all|daemon|device>]",
@@ -1294,6 +1622,54 @@ function getTask3UsageError(args: string[]): string | undefined {
   }
 
   return usageByCommand[command]
+}
+
+async function runOnboardingHelper(writeConfigPath?: string): Promise<{
+  mode: "guided"
+  steps: string[]
+  connectors: string[]
+  wroteConfig: boolean
+  configPath: string | null
+}> {
+  const steps = [
+    "Choose runtime profile (default or ops).",
+    "Configure storage location (MACHINA_STORAGE_DIR optional).",
+    "Select channels to enable (discord/slack/telegram/signal/whatsapp-web/matrix).",
+    "Provide channel credentials and run channel verify with --live when available.",
+    "Run machina doctor and machina workflow cancel-smoke before production usage.",
+  ]
+
+  const connectors = createDefaultChannelConnectors().map((connector) => connector.id)
+  let wroteConfig = false
+  let configPath: string | null = null
+
+  if (typeof writeConfigPath === "string") {
+    const resolved = resolve(writeConfigPath)
+    const payload = {
+      profile: "default",
+      storageDir: ".machina/storage/default",
+      channels: {
+        matrix: { enabled: false, homeserverUrl: "", userId: "", roomId: "", accessToken: "" },
+        discord: { enabled: false, guildId: "", channelId: "", botToken: "" },
+        slack: { enabled: false, accountId: "", endpoint: "", accessToken: "" },
+        telegram: { enabled: false, accountId: "", endpoint: "", accessToken: "" },
+        signal: { enabled: false, accountId: "", endpoint: "", accessToken: "" },
+        "whatsapp-web": { enabled: false, accountId: "", endpoint: "", accessToken: "" },
+      },
+    }
+    await mkdir(dirname(resolved), { recursive: true })
+    await writeFile(resolved, `${JSON.stringify(payload, null, 2)}\n`, "utf8")
+    wroteConfig = true
+    configPath = resolved
+  }
+
+  return {
+    mode: "guided",
+    steps,
+    connectors,
+    wroteConfig,
+    configPath,
+  }
 }
 
 const TASK3_ACTIVE_PROFILE = "default"

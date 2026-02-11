@@ -4,6 +4,13 @@ import { ensureStorageInitialized } from "./storage"
 
 export type ChannelConnectionStatus = "connected" | "disconnected"
 
+export type ChannelAccountProfile = {
+  accountId: string
+  connectorId: string
+  config: Record<string, unknown>
+  updatedAt: string
+}
+
 export type ChannelConfigValidationResult<Config> =
   | {
       ok: true
@@ -43,6 +50,10 @@ export type ChannelConnector<Config> = {
   validateConfig: (config: unknown) => ChannelConfigValidationResult<Config>
   connect: (config: Config) => Promise<ChannelConnectResult>
   disconnect: () => Promise<{ status: "disconnected" }>
+  verify?: (
+    config: Config,
+    options?: { live?: boolean },
+  ) => Promise<{ status: "verified" | "skipped"; message: string; details?: Record<string, unknown> }>
 }
 
 export type PersistedChannelState = {
@@ -61,6 +72,11 @@ type PersistedChannelStateFile = {
   channels: Record<string, PersistedChannelState>
 }
 
+type PersistedChannelAccountsFile = {
+  schemaVersion: 1
+  accounts: Record<string, ChannelAccountProfile>
+}
+
 export class ChannelRuntimeError extends Error {
   readonly code: string
 
@@ -76,6 +92,7 @@ export class ChannelRegistry {
   private readonly storageDir?: string
   private loaded = false
   private readonly channelState = new Map<string, PersistedChannelState>()
+  private readonly channelAccounts = new Map<string, ChannelAccountProfile>()
 
   constructor(options: { storageDir?: string } = {}) {
     this.storageDir = options.storageDir
@@ -152,6 +169,71 @@ export class ChannelRegistry {
     return this.toStatus(channelId, current)
   }
 
+  async saveAccount(input: { accountId: string; connectorId: string; config: unknown }): Promise<ChannelAccountProfile> {
+    await this.ensureLoaded()
+
+    const connector = this.connectors.get(input.connectorId)
+    if (!connector) {
+      throw new ChannelRuntimeError("CONNECTOR_NOT_FOUND", `Connector not found: ${input.connectorId}`)
+    }
+
+    const validation = connector.validateConfig(input.config)
+    if (!validation.ok) {
+      throw new ChannelRuntimeError(validation.code, validation.message)
+    }
+
+    const accountId = input.accountId.trim()
+    if (accountId.length === 0) {
+      throw new ChannelRuntimeError("ACCOUNT_ID_INVALID", "Account id must not be empty")
+    }
+
+    const profile: ChannelAccountProfile = {
+      accountId,
+      connectorId: input.connectorId,
+      config: validation.config as Record<string, unknown>,
+      updatedAt: new Date().toISOString(),
+    }
+
+    this.channelAccounts.set(accountId, profile)
+    await this.persistAccounts()
+    return profile
+  }
+
+  async listAccounts(connectorId?: string): Promise<ChannelAccountProfile[]> {
+    await this.ensureLoaded()
+    const values = [...this.channelAccounts.values()]
+    const filtered = connectorId ? values.filter((item) => item.connectorId === connectorId) : values
+    return filtered.sort((left, right) => left.accountId.localeCompare(right.accountId))
+  }
+
+  async getAccount(accountId: string): Promise<ChannelAccountProfile | null> {
+    await this.ensureLoaded()
+    return this.channelAccounts.get(accountId) ?? null
+  }
+
+  async removeAccount(accountId: string): Promise<boolean> {
+    await this.ensureLoaded()
+    const existed = this.channelAccounts.delete(accountId)
+    if (existed) {
+      await this.persistAccounts()
+    }
+    return existed
+  }
+
+  async connectAccount(input: { channelId: string; accountId: string }): Promise<ChannelStatusResult> {
+    await this.ensureLoaded()
+    const profile = this.channelAccounts.get(input.accountId)
+    if (!profile) {
+      throw new ChannelRuntimeError("ACCOUNT_NOT_FOUND", `Account not found: ${input.accountId}`)
+    }
+
+    return this.connect({
+      channelId: input.channelId,
+      connectorId: profile.connectorId,
+      config: profile.config,
+    })
+  }
+
   async disconnect(channelId: string): Promise<ChannelStatusResult> {
     await this.ensureLoaded()
     const current = this.channelState.get(channelId)
@@ -200,6 +282,11 @@ export class ChannelRegistry {
       this.channelState.set(channelId, state)
     }
 
+    const accounts = await this.readAccountsFile()
+    for (const [accountId, profile] of Object.entries(accounts.accounts)) {
+      this.channelAccounts.set(accountId, profile)
+    }
+
     this.loaded = true
   }
 
@@ -208,6 +295,18 @@ export class ChannelRegistry {
     const payload: PersistedChannelStateFile = {
       schemaVersion: 1,
       channels: Object.fromEntries(this.channelState.entries()),
+    }
+
+    const tempPath = `${filePath}.tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    await writeFile(tempPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8")
+    await rename(tempPath, filePath)
+  }
+
+  private async persistAccounts(): Promise<void> {
+    const filePath = await this.getAccountsFilePath()
+    const payload: PersistedChannelAccountsFile = {
+      schemaVersion: 1,
+      accounts: Object.fromEntries(this.channelAccounts.entries()),
     }
 
     const tempPath = `${filePath}.tmp-${Date.now()}-${Math.random().toString(16).slice(2)}`
@@ -236,9 +335,35 @@ export class ChannelRegistry {
     }
   }
 
+  private async readAccountsFile(): Promise<PersistedChannelAccountsFile> {
+    const filePath = await this.getAccountsFilePath()
+    if (!(await fileExists(filePath))) {
+      return {
+        schemaVersion: 1,
+        accounts: {},
+      }
+    }
+
+    const raw = await readFile(filePath, "utf8")
+    const parsed = JSON.parse(raw) as Partial<PersistedChannelAccountsFile>
+    if (parsed.schemaVersion !== 1 || typeof parsed.accounts !== "object" || parsed.accounts === null) {
+      throw new ChannelRuntimeError("CHANNEL_ACCOUNTS_INVALID", "Channel accounts file is invalid")
+    }
+
+    return {
+      schemaVersion: 1,
+      accounts: parsed.accounts as Record<string, ChannelAccountProfile>,
+    }
+  }
+
   private async getStateFilePath(): Promise<string> {
     const storage = await ensureStorageInitialized(this.storageDir)
     return join(storage.rootDir, "channels-state.json")
+  }
+
+  private async getAccountsFilePath(): Promise<string> {
+    const storage = await ensureStorageInitialized(this.storageDir)
+    return join(storage.rootDir, "channels-accounts.json")
   }
 
   private toStatus(channelId: string, state: PersistedChannelState): ChannelStatusResult {
